@@ -1,743 +1,786 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Zap, Activity, ChevronRight, ChevronLeft, Power, Lock, Upload, Settings, Edit3, Monitor, X, Play, Pause, AlertTriangle, RefreshCw } from 'lucide-react';
-
-// --- Assets & Icons (Custom SVG Components) ---
-
-const HeroSilhouette = ({ type, className }) => {
-  const t = type || 'generic';
-  
-  if (t === 'generic') {
-    return (
-      <svg viewBox="0 0 100 100" className={className} fill="currentColor">
-        <path d="M50 20 C60 20 65 30 65 40 C65 50 80 50 85 45 C90 60 80 80 50 90 C20 80 10 60 15 45 C20 50 35 50 35 40 C35 30 40 20 50 20 Z" />
-      </svg>
-    );
-  } else if (t === 'caped') {
-    return (
-      <svg viewBox="0 0 100 100" className={className} fill="currentColor">
-        <path d="M30 40 Q50 10 70 40 L80 80 L50 90 L20 80 Z" opacity="0.8" />
-        <circle cx="50" cy="30" r="12" />
-        <rect x="35" y="42" width="30" height="40" rx="5" />
-        <path d="M35 45 L20 60 M65 45 L80 60" stroke="currentColor" strokeWidth="5" />
-      </svg>
-    );
-  } else if (t === 'bulky') {
-    return (
-      <svg viewBox="0 0 100 100" className={className} fill="currentColor">
-        <rect x="25" y="35" width="50" height="40" rx="10" />
-        <circle cx="50" cy="25" r="10" />
-        <path d="M20 40 L10 60 M80 40 L90 60" stroke="currentColor" strokeWidth="6" />
-      </svg>
-    );
-  } else if (t === 'flying') {
-    return (
-      <svg viewBox="0 0 100 100" className={className} fill="currentColor">
-         <path d="M20 50 Q50 20 80 50 L60 80 L40 80 Z" />
-         <circle cx="50" cy="35" r="10" />
-         <path d="M10 40 Q30 30 40 50 M90 40 Q70 30 60 50" stroke="currentColor" strokeWidth="4" fill="none" />
-      </svg>
-    );
-  } else if (t === 'elemental') {
-    return (
-      <svg viewBox="0 0 100 100" className={className} fill="currentColor">
-        <path d="M50 10 Q70 30 70 50 Q70 80 50 90 Q30 80 30 50 Q30 30 50 10 Z" />
-        <circle cx="50" cy="40" r="8" fill="rgba(0,0,0,0.3)" />
-        <path d="M20 60 Q10 40 30 30 M80 60 Q90 40 70 30" stroke="currentColor" strokeWidth="3" fill="none" />
-      </svg>
-    );
-  }
-  return <Shield className={className} />;
-};
-
-const DroidSilhouette = ({ version, className }) => {
-  let v = 1;
-  if (typeof version === 'string') {
-    v = parseInt(version.replace(/\D/g, '')) || 1;
-  } else {
-    v = version;
-  }
-  const safeV = ((v - 1) % 10) + 1;
-
-  return (
-    <svg viewBox="0 0 100 100" className={className} fill="currentColor">
-      <circle cx="50" cy="40" r="20" />
-      <circle cx="50" cy="40" r="8" fill="#D2F6EF" /> 
-      {safeV <= 3 && <path d="M30 45 Q10 60 10 90 M70 45 Q90 60 90 90 M50 45 Q50 70 50 85" stroke="currentColor" strokeWidth="6" fill="none" />}
-      {safeV > 3 && safeV <= 6 && (
-        <>
-          <path d="M25 45 Q10 50 10 85 M75 45 Q90 50 90 85" stroke="currentColor" strokeWidth="7" fill="none" />
-          <path d="M40 50 L30 90 M60 50 L70 90" stroke="currentColor" strokeWidth="5" fill="none" />
-          <rect x="30" y="20" width="40" height="10" rx="2" fill="currentColor" />
-        </>
-      )}
-      {safeV > 6 && (
-        <>
-           <path d="M20 40 C0 30 0 70 15 90" stroke="currentColor" strokeWidth="5" fill="none" />
-           <path d="M80 40 C100 30 100 70 85 90" stroke="currentColor" strokeWidth="5" fill="none" />
-           <path d="M35 55 C25 70 30 90 40 95" stroke="currentColor" strokeWidth="5" fill="none" />
-           <path d="M65 55 C75 70 70 90 60 95" stroke="currentColor" strokeWidth="5" fill="none" />
-           {safeV >= 9 && <circle cx="50" cy="20" r="6" fill="currentColor" />}
-        </>
-      )}
-    </svg>
-  );
-};
-
-// --- Initial Data ---
-const DEFAULT_RIGHT_DESC = 'FEATURES: TREADED LOCOMOTION, BI-SENSORY DISPLAY, GRAPPLING CLAWS, SENSOR ARRAY';
-
-const INITIAL_DATA = [
-  { id: 1, leftName: 'UNIVERSAL MAN', leftRating: 2.9, rightRating: 3.5, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X1', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'ATOMIC DENSITY MANIPULATION', leftDesc: 'Low level threat. Easily manipulated.', leftVisual: 'generic', rightVisual: 1 },
-  { id: 2, leftName: 'PSYCWAVE', leftRating: 1.6, rightRating: 3.5, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X1', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'PSYCHIC FORESIGHT, TELEKINESIS', leftDesc: 'Mental instability exploited.', leftVisual: 'generic', rightVisual: 1 },
-  { id: 3, leftName: 'EVERSEER', leftRating: 3.2, rightRating: 3.6, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X1', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'TELEPATHY, MAGNI-VISION', leftDesc: 'Paranoid. Vulnerable to traps.', leftVisual: 'caped', rightVisual: 1 },
-  { id: 4, leftName: 'MACROBURST', leftRating: 5.9, rightRating: 6.0, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X2', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'FORCE PROJECTION, WIND', leftDesc: 'High output, low defense.', leftVisual: 'bulky', rightVisual: 2 },
-  { id: 5, leftName: 'PHYLANGE', leftRating: 4.7, rightRating: 6.0, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X2', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'SONIC FIELDS', leftDesc: 'Over-reliant on gadgets.', leftVisual: 'generic', rightVisual: 2 },
-  { id: 6, leftName: 'BLAZESTONE', leftRating: 5.5, rightRating: 6.1, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X2', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'PYROTECHNIC DISCHARGE', leftDesc: 'Temperamental. Easily baited.', leftVisual: 'elemental', rightVisual: 2 },
-  { id: 7, leftName: 'DOWNBURST', leftRating: 6.5, rightRating: 7.0, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X3', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'GASEOUS EXPULSION', leftDesc: 'Flight capability neutralized.', leftVisual: 'flying', rightVisual: 3 },
-  { id: 8, leftName: 'HYPERSHOCK', leftRating: 7.5, rightRating: 7.8, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X3', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'SEISMIC WAVE GENERATION', leftDesc: 'Dual-core reactors overloaded.', leftVisual: 'bulky', rightVisual: 3 },
-  { id: 9, leftName: 'APOGEE', leftRating: 6.5, rightRating: 8.0, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X4', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'GRAVITY CONTROL, LEVITATION', leftDesc: 'Solar intensity weakness.', leftVisual: 'flying', rightVisual: 4 },
-  { id: 10, leftName: 'GAZERBEAM', leftRating: 6.3, rightRating: 8.5, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X5', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'LAZER VISION', leftDesc: 'Located in cave system. Neutralized.', leftVisual: 'caped', rightVisual: 5 },
-  { id: 11, leftName: 'STORMICIDE', leftRating: 6.7, rightRating: 8.6, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X5', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'ELECTRICAL DISCHARGE', leftDesc: 'Absorption capabilities exceeded.', leftVisual: 'elemental', rightVisual: 5 },
-  { id: 12, leftName: 'GAMMA JACK', leftRating: 7.9, rightRating: 8.8, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X6', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'CONTROLLED RADIATION BURSTS', leftDesc: 'Egocentric. Predictable.', leftVisual: 'caped', rightVisual: 6 },
-  { id: 13, leftName: 'STRATOGALE', leftRating: 6.9, rightRating: 9.0, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X7', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'SUPER STRENGTH, FLIGHT', leftDesc: 'Cape caught in turbine. Terminated.', leftVisual: 'flying', rightVisual: 7 },
-  { id: 14, leftName: 'METAMAN', leftRating: 8.9, rightRating: 9.2, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X8', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'FLIGHT, STRENGTH, X-RAY', leftDesc: 'Magnetic trap successful.', leftVisual: 'bulky', rightVisual: 8 },
-  { id: 15, leftName: 'SPLASHDOWN', leftRating: 7.4, rightRating: 9.3, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X9', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'WATER MANIPULATION, FLIGHT', leftDesc: 'Vortex creation failed.', leftVisual: 'elemental', rightVisual: 9 },
-  { id: 16, leftName: 'MR. INCREDIBLE', leftRating: 9.1, rightRating: 10.0, outcome: 'ONGOING', rightName: 'OMNIDROID v.X9', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'SUPER STRENGTH, INVULNERABILITY', leftDesc: 'Class 5 Threat. Do not engage alone.', leftVisual: 'bulky', rightVisual: 9 },
-];
-
-const C = {
-  bgTeal: '#7CAEA0',      
-  bgLight: '#D2F6EF',     
-  textDark: '#1A2E2C',    
-  red: '#D61A1A',         
-  white: '#FFFFFF'
-};
-
-const VISUAL_TYPES_LEFT = ['generic', 'caped', 'bulky', 'flying', 'elemental'];
-
-export default function KronosInterface() {
-  const [appState, setAppState] = useState('BOOT'); 
-  const [inputPwd, setInputPwd] = useState('');
-  const [cursorVisible, setCursorVisible] = useState(true);
-  
-  const [data, setData] = useState(INITIAL_DATA);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [headers, setHeaders] = useState({ left: 'OPPONENT', right: 'PROTOTYPE' });
-  
-  const [showTerminated, setShowTerminated] = useState(false);
-  const [transitioning, setTransitioning] = useState(false);
-  const [customImages, setCustomImages] = useState({});
-  const fileInputRef = useRef(null);
-  const [uploadTarget, setUploadTarget] = useState(null);
-
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isImmersive, setIsImmersive] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [autoPlay, setAutoPlay] = useState(false); 
-
-  useEffect(() => {
-    const interval = setInterval(() => setCursorVisible(v => !v), 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (appState === 'BOOT') setTimeout(() => setAppState('LOGIN'), 1500);
-  }, [appState]);
-
-  useEffect(() => {
-    if (appState === 'DATABASE') {
-      setShowTerminated(false);
-      const current = data[currentIndex];
-      if (current.outcome !== 'ONGOING' && !isEditMode) {
-        const timer = setTimeout(() => setShowTerminated(true), 1200);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [currentIndex, appState, isEditMode, data]);
-
-  useEffect(() => {
-    let interval;
-    if (isImmersive && autoPlay && appState === 'DATABASE') {
-      interval = setInterval(() => {
-        handleNext();
-      }, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [isImmersive, autoPlay, appState, currentIndex]);
-
-  useEffect(() => {
-    if (isImmersive) {
-      setAutoPlay(true);
-      setShowSettings(false);
-    } else {
-      setAutoPlay(false);
-    }
-  }, [isImmersive]);
-
-  const fakeLogin = () => {
-    if (inputPwd === 'KRONOS') { setAppState('MENU'); return; }
-    let target = "KRONOS";
-    let pwd = "";
-    let i = 0;
-    setInputPwd("");
-    const interval = setInterval(() => {
-      pwd += target[i];
-      setInputPwd(pwd);
-      i++;
-      if (i === target.length) { clearInterval(interval); setTimeout(() => setAppState('MENU'), 600); }
-    }, 150);
-  };
-
-  const handleNext = () => {
-    setTransitioning(true);
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev + 1) % data.length);
-      setTransitioning(false);
-    }, 300);
-  };
-
-  const handlePrev = () => {
-    setTransitioning(true);
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev - 1 + data.length) % data.length);
-      setTransitioning(false);
-    }, 300);
-  };
-
-  const updateField = (field, value) => {
-    const { sourceIndex } = resolveEntityForEditing(field);
-    const newData = [...data];
-    newData[sourceIndex] = { ...newData[sourceIndex], [field]: value };
-    setData(newData);
-  };
-
-  const cycleVisual = (side, direction) => {
-    // We must update the visual at the source index
-    const fieldName = side === 'left' ? 'leftVisual' : 'rightVisual';
-    const { sourceIndex, data: entityData } = resolveEntityForEditing(fieldName);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRONOS DATABASE INTERFACE</title>
     
-    const currentVal = entityData[fieldName];
-    const newData = [...data];
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    if (side === 'left') {
-      const currentTypeIdx = VISUAL_TYPES_LEFT.indexOf(currentVal);
-      let nextIdx = direction === 'next' ? currentTypeIdx + 1 : currentTypeIdx - 1;
-      if (nextIdx >= VISUAL_TYPES_LEFT.length) nextIdx = 0;
-      if (nextIdx < 0) nextIdx = VISUAL_TYPES_LEFT.length - 1;
-      newData[sourceIndex] = { ...newData[sourceIndex], leftVisual: VISUAL_TYPES_LEFT[nextIdx] };
-    } else {
-      let nextV = direction === 'next' ? currentVal + 1 : currentVal - 1;
-      if (nextV > 10) nextV = 1;
-      if (nextV < 1) nextV = 10;
-      newData[sourceIndex] = { ...newData[sourceIndex], rightVisual: nextV };
+    <!-- Import Map to handle module imports in the browser -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+        }
     }
-    setData(newData);
-  };
-
-  const triggerUpload = (type) => {
-    if (isImmersive || isEditMode) return; 
-    setUploadTarget({ type, index: currentIndex }); // We'll resolve the source index in handleFileChange or use effective index
-    if (fileInputRef.current) fileInputRef.current.click();
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file && uploadTarget) {
-      const url = URL.createObjectURL(file);
-      // Resolve where to save this image
-      const { sourceIndex } = resolveEntity(uploadTarget.index, uploadTarget.type);
-      const key = `${uploadTarget.type}-${sourceIndex}`;
-      setCustomImages(prev => ({ ...prev, [key]: url }));
-    }
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  // --- Recursive Inheritance Logic ---
-  // Returns the data object and the index it came from
-  const resolveEntity = (index, side) => {
-    // Base case: index 0 is always the source for itself
-    if (index === 0) return { data: data[0], sourceIndex: 0 };
+    </script>
     
-    const prev = data[index - 1];
-    const prevOutcome = prev.outcome;
+    <!-- Babel for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    // Check inheritance rules
-    // If side is LEFT (Hero) -> Inherits if prev outcome was DROID_ELIMINATED or ONGOING
-    // If side is RIGHT (Droid) -> Inherits if prev outcome was HERO_ELIMINATED or ONGOING
-    
-    const inherits = (side === 'left' && (prevOutcome === 'DROID_ELIMINATED' || prevOutcome === 'ONGOING')) ||
-                     (side === 'right' && (prevOutcome === 'HERO_ELIMINATED' || prevOutcome === 'ONGOING'));
+    <style>
+        /* Custom font adjustments to match the aesthetic */
+        body {
+            background-color: black;
+            color: white;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-    if (inherits) {
-      return resolveEntity(index - 1, side);
-    } else {
-      // New challenger appearing at this index
-      return { data: data[index], sourceIndex: index };
-    }
-  };
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { Shield, Zap, Activity, ChevronRight, ChevronLeft, Power, Lock, Upload, Settings, Edit3, Monitor, X, Play, Pause, AlertTriangle, RefreshCw } from 'lucide-react';
 
-  // Helper to determine which entity is being edited currently
-  const resolveEntityForEditing = (fieldName) => {
-    const side = fieldName.startsWith('left') ? 'left' : (fieldName.startsWith('right') ? 'right' : 'outcome'); // Outcome updates current
-    if (side === 'outcome') return { data: data[currentIndex], sourceIndex: currentIndex };
-    return resolveEntity(currentIndex, side);
-  };
+        // --- Assets & Icons (Custom SVG Components) ---
 
-  // Resolve data for rendering
-  const leftEntity = resolveEntity(currentIndex, 'left');
-  const rightEntity = resolveEntity(currentIndex, 'right');
-  
-  // Flatten for easy access
-  const displayData = {
-    ...data[currentIndex], // Current slide's outcome/id
-    // Overwrite left props with resolved
-    leftName: leftEntity.data.leftName,
-    leftRating: leftEntity.data.leftRating,
-    leftPowers: leftEntity.data.leftPowers,
-    leftDesc: leftEntity.data.leftDesc,
-    leftVisual: leftEntity.data.leftVisual,
-    // Overwrite right props with resolved
-    rightName: rightEntity.data.rightName,
-    rightRating: rightEntity.data.rightRating,
-    rightDesc: rightEntity.data.rightDesc,
-    rightVisual: rightEntity.data.rightVisual,
-  };
+        const HeroSilhouette = ({ type, className }) => {
+            const t = type || 'generic';
+            
+            if (t === 'generic') {
+                return (
+                <svg viewBox="0 0 100 100" className={className} fill="currentColor">
+                    <path d="M50 20 C60 20 65 30 65 40 C65 50 80 50 85 45 C90 60 80 80 50 90 C20 80 10 60 15 45 C20 50 35 50 35 40 C35 30 40 20 50 20 Z" />
+                </svg>
+                );
+            } else if (t === 'caped') {
+                return (
+                <svg viewBox="0 0 100 100" className={className} fill="currentColor">
+                    <path d="M30 40 Q50 10 70 40 L80 80 L50 90 L20 80 Z" opacity="0.8" />
+                    <circle cx="50" cy="30" r="12" />
+                    <rect x="35" y="42" width="30" height="40" rx="5" />
+                    <path d="M35 45 L20 60 M65 45 L80 60" stroke="currentColor" strokeWidth="5" />
+                </svg>
+                );
+            } else if (t === 'bulky') {
+                return (
+                <svg viewBox="0 0 100 100" className={className} fill="currentColor">
+                    <rect x="25" y="35" width="50" height="40" rx="10" />
+                    <circle cx="50" cy="25" r="10" />
+                    <path d="M20 40 L10 60 M80 40 L90 60" stroke="currentColor" strokeWidth="6" />
+                </svg>
+                );
+            } else if (t === 'flying') {
+                return (
+                <svg viewBox="0 0 100 100" className={className} fill="currentColor">
+                    <path d="M20 50 Q50 20 80 50 L60 80 L40 80 Z" />
+                    <circle cx="50" cy="35" r="10" />
+                    <path d="M10 40 Q30 30 40 50 M90 40 Q70 30 60 50" stroke="currentColor" strokeWidth="4" fill="none" />
+                </svg>
+                );
+            } else if (t === 'elemental') {
+                return (
+                <svg viewBox="0 0 100 100" className={className} fill="currentColor">
+                    <path d="M50 10 Q70 30 70 50 Q70 80 50 90 Q30 80 30 50 Q30 30 50 10 Z" />
+                    <circle cx="50" cy="40" r="8" fill="rgba(0,0,0,0.3)" />
+                    <path d="M20 60 Q10 40 30 30 M80 60 Q90 40 70 30" stroke="currentColor" strokeWidth="3" fill="none" />
+                </svg>
+                );
+            }
+            return <Shield className={className} />;
+        };
 
-  // Image resolution needs to check the customImages map using source indices
-  const getEffectiveImage = (side) => {
-    const { sourceIndex } = resolveEntity(currentIndex, side);
-    const key = `${side}-${sourceIndex}`;
-    return customImages[key] || null;
-  };
+        const DroidSilhouette = ({ version, className }) => {
+            let v = 1;
+            if (typeof version === 'string') {
+                v = parseInt(version.replace(/\D/g, '')) || 1;
+            } else {
+                v = version;
+            }
+            const safeV = ((v - 1) % 10) + 1;
 
-  const currentLeftImg = getEffectiveImage('left');
-  const currentRightImg = getEffectiveImage('right');
-  
-  const leftTerminated = displayData.outcome === 'HERO_ELIMINATED';
-  const rightTerminated = displayData.outcome === 'DROID_ELIMINATED';
-
-  // --- Views ---
-
-  const renderBoot = () => (
-    <div className="flex items-center justify-center h-full bg-black text-white font-mono text-xl">
-      <div className="animate-pulse tracking-widest">INITIALIZING SYSTEM...</div>
-    </div>
-  );
-
-  const renderLogin = () => (
-    <div 
-      className="flex flex-col items-center justify-center h-full w-full relative cursor-pointer" 
-      style={{ backgroundColor: C.bgTeal }}
-      onClick={fakeLogin}
-    >
-       <div className="w-full h-32 flex items-center justify-center" style={{ backgroundColor: C.bgLight }}>
-          <div className="font-black text-6xl tracking-[0.5em] font-mono relative" style={{ color: C.textDark }}>
-             {inputPwd || "PASSWORD"}
-             {inputPwd && cursorVisible && <span className="absolute -right-12 bottom-2 w-8 h-2 bg-black"></span>}
-             {!inputPwd && cursorVisible && <span className="absolute -right-12 bottom-2 w-8 h-2 bg-black animate-pulse"></span>}
-          </div>
-       </div>
-    </div>
-  );
-
-  const renderMenu = () => {
-    const menuItems = ["ISLAND OPERATIONS", "FINANCES", "OMNIDROID METATRAINING", "SUPERS"];
-    return (
-      <div className="flex flex-col h-full font-mono p-12 justify-center relative" style={{ backgroundColor: C.bgTeal }}>
-        <div className="max-w-4xl mx-auto w-full flex flex-col gap-1">
-          {menuItems.map((item, idx) => (
-            <div 
-              key={idx}
-              className={`flex items-center p-6 cursor-pointer transition-all duration-100 ${idx === 3 ? 'pl-12' : 'hover:pl-10 opacity-60 hover:opacity-100'}`}
-              style={{ backgroundColor: idx === 3 ? C.bgLight : 'transparent' }}
-              onClick={() => idx === 3 && setAppState('DATABASE')}
-            >
-              <div className="w-12 flex justify-center mr-6">
-                {idx === 0 && <Activity size={32} color={C.textDark} />}
-                {idx === 1 && <span className="text-4xl font-bold" style={{ color: C.textDark }}>$</span>}
-                {idx === 2 && <Zap size={32} color={C.textDark} />}
-                {idx === 3 && <UserIcon className="w-8 h-8" color={C.textDark} />}
-              </div>
-              <span className="text-4xl font-black tracking-widest" style={{ color: C.textDark }}>
-                {item}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const renderDatabase = () => {
-    return (
-      <div className="flex flex-col w-full h-full font-sans relative overflow-hidden group/main">
-        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-
-        {/* Header Bar */}
-        <div className="h-[14vh] flex items-center justify-between px-8 z-10 transition-all duration-500 shrink-0" 
-             style={{ backgroundColor: C.bgTeal, borderBottom: `4px solid ${C.bgLight}`, transform: isImmersive ? 'translateY(-100%)' : 'translateY(0)' }}>
-          
-          {/* Left Side: Header */}
-          <div className="w-5/12 flex flex-col items-start justify-center overflow-hidden">
-             {isEditMode ? (
-               <input 
-                 value={headers.left}
-                 onChange={(e) => setHeaders({...headers, left: e.target.value})}
-                 className="text-4xl lg:text-5xl font-black tracking-widest uppercase w-full bg-black/10 border-b border-white/50 text-black/80 focus:outline-none placeholder-black/30"
-                 placeholder="LEFT TITLE"
-               />
-             ) : (
-               <div className="text-4xl lg:text-5xl font-black tracking-widest uppercase truncate w-full" style={{ color: C.textDark }}>
-                 {headers.left}
-               </div>
-             )}
-             
-             <div className="flex items-center gap-2 mt-1">
-               <span className="text-base font-bold tracking-wider opacity-70" style={{ color: 'white' }}>THREAT:</span>
-               {isEditMode ? (
-                  <input 
-                    type="number" step="0.1"
-                    value={displayData.leftRating === '' || isNaN(displayData.leftRating) ? '' : displayData.leftRating}
-                    onChange={(e) => updateField('leftRating', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                    className="text-3xl lg:text-4xl font-black text-white bg-black/20 w-24 text-center border-b border-white focus:outline-none"
-                  />
-               ) : (
-                  <span className="text-4xl lg:text-5xl font-black text-white">{displayData.leftRating ? displayData.leftRating.toFixed(1) : '?.?'}</span>
-               )}
-             </div>
-          </div>
-
-          {/* Center: Outcome Toggle */}
-          <div className="w-2/12 text-center flex items-center justify-center relative">
-             {isEditMode && (
-               <div className="flex flex-col items-center bg-black/40 p-2 rounded backdrop-blur-md border border-white/20 absolute top-2 z-50 shadow-xl">
-                  <span className="text-xs text-white font-mono mb-1 tracking-widest">OUTCOME</span>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => updateField('outcome', 'HERO_ELIMINATED')}
-                      className={`px-3 py-1 rounded text-xs font-bold ${displayData.outcome === 'HERO_ELIMINATED' ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-                      title="Left Terminated"
-                    >
-                      L-DEAD
-                    </button>
-                    <button 
-                      onClick={() => updateField('outcome', 'ONGOING')}
-                      className={`px-3 py-1 rounded text-xs font-bold ${displayData.outcome === 'ONGOING' ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-                      title="Draw"
-                    >
-                      DRAW
-                    </button>
-                    <button 
-                      onClick={() => updateField('outcome', 'DROID_ELIMINATED')}
-                      className={`px-3 py-1 rounded text-xs font-bold ${displayData.outcome === 'DROID_ELIMINATED' ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-                      title="Right Terminated"
-                    >
-                      R-DEAD
-                    </button>
-                  </div>
-               </div>
-             )}
-          </div>
-          
-          {/* Right Side: Header */}
-          <div className="w-5/12 flex flex-col items-end justify-center overflow-hidden text-right">
-             {isEditMode ? (
-               <input 
-                 value={headers.right}
-                 onChange={(e) => setHeaders({...headers, right: e.target.value})}
-                 className="text-4xl lg:text-5xl font-black tracking-widest uppercase w-full bg-black/10 border-b border-white/50 text-black/80 focus:outline-none text-right placeholder-black/30"
-                 placeholder="RIGHT TITLE"
-               />
-             ) : (
-               <div className="text-4xl lg:text-5xl font-black tracking-widest uppercase truncate w-full" style={{ color: C.textDark }}>
-                  {headers.right}
-               </div>
-             )}
-             
-             <div className="flex items-center justify-end gap-2 mt-1">
-               <span className="text-base font-bold tracking-wider opacity-70" style={{ color: 'white' }}>THREAT:</span>
-               {isEditMode ? (
-                  <input 
-                    type="number" step="0.1"
-                    value={displayData.rightRating === '' || isNaN(displayData.rightRating) ? '' : displayData.rightRating}
-                    onChange={(e) => updateField('rightRating', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                    className="text-3xl lg:text-4xl font-black text-white bg-black/20 w-24 text-center border-b border-white focus:outline-none"
-                  />
-               ) : (
-                  <span className="text-4xl lg:text-5xl font-black text-white">{displayData.rightRating ? displayData.rightRating.toFixed(1) : '?.?'}</span>
-               )}
-             </div>
-          </div>
-        </div>
-
-        {/* Immersive Close Button */}
-        {isImmersive && (
-           <div className="absolute top-4 right-4 z-50 mix-blend-difference opacity-0 group-hover/main:opacity-100 transition-opacity">
-              <button onClick={() => setIsImmersive(false)} className="text-white bg-white/20 p-2 rounded-full hover:bg-white/40">
-                <X size={20} />
-              </button>
-           </div>
-        )}
-
-        {/* Content Area */}
-        <div className={`flex-1 flex relative transition-opacity duration-200 ${transitioning ? 'opacity-80' : 'opacity-100'} ${isImmersive ? 'h-full' : ''}`}>
-          
-          {/* LEFT PANEL */}
-          <div 
-            className={`w-1/2 relative overflow-hidden flex flex-col group ${!isImmersive && !isEditMode ? 'cursor-pointer' : ''}`}
-            onClick={() => triggerUpload('left')}
-            style={{ backgroundColor: C.bgLight }}
-          >
-            <div className="flex-1 flex items-center justify-center relative overflow-hidden">
-                {/* Visual Type Cycler (Edit Mode Only) */}
-                {isEditMode && (
-                  <div className="absolute top-4 w-full flex justify-between px-8 z-50">
-                     <button onClick={(e) => { e.stopPropagation(); cycleVisual('left', 'prev'); }} className="bg-black/10 hover:bg-black/20 p-2 rounded-full text-black"><ChevronLeft/></button>
-                     <span className="text-black font-mono text-xs bg-white/50 px-2 py-1 rounded">MODEL TYPE</span>
-                     <button onClick={(e) => { e.stopPropagation(); cycleVisual('left', 'next'); }} className="bg-black/10 hover:bg-black/20 p-2 rounded-full text-black"><ChevronRight/></button>
-                  </div>
+            return (
+                <svg viewBox="0 0 100 100" className={className} fill="currentColor">
+                <circle cx="50" cy="40" r="20" />
+                <circle cx="50" cy="40" r="8" fill="#D2F6EF" /> 
+                {safeV <= 3 && <path d="M30 45 Q10 60 10 90 M70 45 Q90 60 90 90 M50 45 Q50 70 50 85" stroke="currentColor" strokeWidth="6" fill="none" />}
+                {safeV > 3 && safeV <= 6 && (
+                    <>
+                    <path d="M25 45 Q10 50 10 85 M75 45 Q90 50 90 85" stroke="currentColor" strokeWidth="7" fill="none" />
+                    <path d="M40 50 L30 90 M60 50 L70 90" stroke="currentColor" strokeWidth="5" fill="none" />
+                    <rect x="30" y="20" width="40" height="10" rx="2" fill="currentColor" />
+                    </>
                 )}
-
-                {/* Upload Hint */}
-                {!isImmersive && !isEditMode && (
-                  <div className="absolute inset-0 z-40 bg-teal-900/10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <Upload className="text-teal-900 w-12 h-12 mb-2" />
-                    <span className="text-teal-900 font-mono text-sm tracking-widest">UPLOAD IMAGE</span>
-                  </div>
+                {safeV > 6 && (
+                    <>
+                    <path d="M20 40 C0 30 0 70 15 90" stroke="currentColor" strokeWidth="5" fill="none" />
+                    <path d="M80 40 C100 30 100 70 85 90" stroke="currentColor" strokeWidth="5" fill="none" />
+                    <path d="M35 55 C25 70 30 90 40 95" stroke="currentColor" strokeWidth="5" fill="none" />
+                    <path d="M65 55 C75 70 70 90 60 95" stroke="currentColor" strokeWidth="5" fill="none" />
+                    {safeV >= 9 && <circle cx="50" cy="20" r="6" fill="currentColor" />}
+                    </>
                 )}
+                </svg>
+            );
+        };
 
-                <div className={`w-4/5 h-4/5 flex items-center justify-center transition-all duration-1000 ease-in-out ${showTerminated && leftTerminated ? 'grayscale contrast-125' : ''}`} style={{ transform: isImmersive ? 'scale(1.05)' : 'scale(1)' }}>
-                   {currentLeftImg ? (
-                     <img src={currentLeftImg} alt="Hero" className="w-full h-full object-cover" />
-                   ) : (
-                     <div className="w-full h-full text-black/80">
-                        <HeroSilhouette type={displayData.leftVisual} className="w-full h-full drop-shadow-2xl" />
-                     </div>
-                   )}
-                </div>
+        // --- Initial Data ---
+        const DEFAULT_RIGHT_DESC = 'FEATURES: TREADED LOCOMOTION, BI-SENSORY DISPLAY, GRAPPLING CLAWS, SENSOR ARRAY';
 
-                {/* LEFT TERMINATED STAMP */}
-                {showTerminated && !isEditMode && leftTerminated && (
-                  <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 z-50 animate-stamp-bar origin-center overflow-hidden pointer-events-none">
-                     <div className="bg-[#D61A1A] w-full py-5 flex justify-center items-center shadow-lg border-y-4 border-[#900]">
-                        <span className="text-white font-black text-7xl md:text-8xl lg:text-9xl tracking-widest uppercase drop-shadow-md whitespace-nowrap">
-                           TERMINATED
-                        </span>
-                     </div>
-                  </div>
-                )}
-            </div>
+        const INITIAL_DATA = [
+            { id: 1, leftName: 'UNIVERSAL MAN', leftRating: 2.9, rightRating: 3.5, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X1', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'ATOMIC DENSITY MANIPULATION', leftDesc: 'Low level threat. Easily manipulated.', leftVisual: 'generic', rightVisual: 1 },
+            { id: 2, leftName: 'PSYCWAVE', leftRating: 1.6, rightRating: 3.5, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X1', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'PSYCHIC FORESIGHT, TELEKINESIS', leftDesc: 'Mental instability exploited.', leftVisual: 'generic', rightVisual: 1 },
+            { id: 3, leftName: 'EVERSEER', leftRating: 3.2, rightRating: 3.6, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X1', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'TELEPATHY, MAGNI-VISION', leftDesc: 'Paranoid. Vulnerable to traps.', leftVisual: 'caped', rightVisual: 1 },
+            { id: 4, leftName: 'MACROBURST', leftRating: 5.9, rightRating: 6.0, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X2', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'FORCE PROJECTION, WIND', leftDesc: 'High output, low defense.', leftVisual: 'bulky', rightVisual: 2 },
+            { id: 5, leftName: 'PHYLANGE', leftRating: 4.7, rightRating: 6.0, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X2', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'SONIC FIELDS', leftDesc: 'Over-reliant on gadgets.', leftVisual: 'generic', rightVisual: 2 },
+            { id: 6, leftName: 'BLAZESTONE', leftRating: 5.5, rightRating: 6.1, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X2', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'PYROTECHNIC DISCHARGE', leftDesc: 'Temperamental. Easily baited.', leftVisual: 'elemental', rightVisual: 2 },
+            { id: 7, leftName: 'DOWNBURST', leftRating: 6.5, rightRating: 7.0, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X3', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'GASEOUS EXPULSION', leftDesc: 'Flight capability neutralized.', leftVisual: 'flying', rightVisual: 3 },
+            { id: 8, leftName: 'HYPERSHOCK', leftRating: 7.5, rightRating: 7.8, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X3', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'SEISMIC WAVE GENERATION', leftDesc: 'Dual-core reactors overloaded.', leftVisual: 'bulky', rightVisual: 3 },
+            { id: 9, leftName: 'APOGEE', leftRating: 6.5, rightRating: 8.0, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X4', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'GRAVITY CONTROL, LEVITATION', leftDesc: 'Solar intensity weakness.', leftVisual: 'flying', rightVisual: 4 },
+            { id: 10, leftName: 'GAZERBEAM', leftRating: 6.3, rightRating: 8.5, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X5', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'LAZER VISION', leftDesc: 'Located in cave system. Neutralized.', leftVisual: 'caped', rightVisual: 5 },
+            { id: 11, leftName: 'STORMICIDE', leftRating: 6.7, rightRating: 8.6, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X5', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'ELECTRICAL DISCHARGE', leftDesc: 'Absorption capabilities exceeded.', leftVisual: 'elemental', rightVisual: 5 },
+            { id: 12, leftName: 'GAMMA JACK', leftRating: 7.9, rightRating: 8.8, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X6', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'CONTROLLED RADIATION BURSTS', leftDesc: 'Egocentric. Predictable.', leftVisual: 'caped', rightVisual: 6 },
+            { id: 13, leftName: 'STRATOGALE', leftRating: 6.9, rightRating: 9.0, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X7', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'SUPER STRENGTH, FLIGHT', leftDesc: 'Cape caught in turbine. Terminated.', leftVisual: 'flying', rightVisual: 7 },
+            { id: 14, leftName: 'METAMAN', leftRating: 8.9, rightRating: 9.2, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X8', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'FLIGHT, STRENGTH, X-RAY', leftDesc: 'Magnetic trap successful.', leftVisual: 'bulky', rightVisual: 8 },
+            { id: 15, leftName: 'SPLASHDOWN', leftRating: 7.4, rightRating: 9.3, outcome: 'HERO_ELIMINATED', rightName: 'OMNIDROID v.X9', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'WATER MANIPULATION, FLIGHT', leftDesc: 'Vortex creation failed.', leftVisual: 'elemental', rightVisual: 9 },
+            { id: 16, leftName: 'MR. INCREDIBLE', leftRating: 9.1, rightRating: 10.0, outcome: 'ONGOING', rightName: 'OMNIDROID v.X9', rightDesc: DEFAULT_RIGHT_DESC, leftPowers: 'SUPER STRENGTH, INVULNERABILITY', leftDesc: 'Class 5 Threat. Do not engage alone.', leftVisual: 'bulky', rightVisual: 9 },
+        ];
 
-            {/* Left Info Footer */}
-            <div className="h-[22vh] flex flex-col items-center justify-center text-center p-4 z-20 transition-all duration-300 shrink-0" style={{ backgroundColor: C.bgTeal, borderTop: `4px solid ${C.bgLight}` }}>
-                {isEditMode ? (
-                  <div className="w-full flex flex-col items-center gap-2">
-                    <input 
-                      value={displayData.leftName}
-                      onChange={(e) => updateField('leftName', e.target.value)}
-                      className="text-4xl lg:text-5xl font-black tracking-widest uppercase text-white bg-black/20 text-center w-full border-b border-white focus:outline-none"
-                    />
-                  </div>
-                ) : (
-                  <h2 className="text-4xl lg:text-5xl font-black tracking-widest uppercase mb-3 text-white drop-shadow-sm">{displayData.leftName}</h2>
-                )}
+        const C = {
+            bgTeal: '#7CAEA0',      
+            bgLight: '#D2F6EF',     
+            textDark: '#1A2E2C',    
+            red: '#D61A1A',         
+            white: '#FFFFFF'
+        };
+
+        const VISUAL_TYPES_LEFT = ['generic', 'caped', 'bulky', 'flying', 'elemental'];
+
+        // Moved UserIcon here so it's accessible to the component
+        const UserIcon = ({ className, color }) => (
+            <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter" className={className}>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+            </svg>
+        );
+
+        function KronosInterface() {
+            const [appState, setAppState] = useState('BOOT'); 
+            const [inputPwd, setInputPwd] = useState('');
+            const [cursorVisible, setCursorVisible] = useState(true);
+            
+            const [data, setData] = useState(INITIAL_DATA);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [headers, setHeaders] = useState({ left: 'OPPONENT', right: 'PROTOTYPE' });
+            
+            const [showTerminated, setShowTerminated] = useState(false);
+            const [transitioning, setTransitioning] = useState(false);
+            const [customImages, setCustomImages] = useState({});
+            const fileInputRef = useRef(null);
+            const [uploadTarget, setUploadTarget] = useState(null);
+
+            const [isEditMode, setIsEditMode] = useState(false);
+            const [isImmersive, setIsImmersive] = useState(false);
+            const [showSettings, setShowSettings] = useState(false);
+            const [autoPlay, setAutoPlay] = useState(false); 
+
+            useEffect(() => {
+                const interval = setInterval(() => setCursorVisible(v => !v), 500);
+                return () => clearInterval(interval);
+            }, []);
+
+            useEffect(() => {
+                if (appState === 'BOOT') setTimeout(() => setAppState('LOGIN'), 1500);
+            }, [appState]);
+
+            useEffect(() => {
+                if (appState === 'DATABASE') {
+                setShowTerminated(false);
+                const current = data[currentIndex];
+                if (current.outcome !== 'ONGOING' && !isEditMode) {
+                    const timer = setTimeout(() => setShowTerminated(true), 1200);
+                    return () => clearTimeout(timer);
+                }
+                }
+            }, [currentIndex, appState, isEditMode, data]);
+
+            useEffect(() => {
+                let interval;
+                if (isImmersive && autoPlay && appState === 'DATABASE') {
+                interval = setInterval(() => {
+                    handleNext();
+                }, 5000);
+                }
+                return () => clearInterval(interval);
+            }, [isImmersive, autoPlay, appState, currentIndex]);
+
+            useEffect(() => {
+                if (isImmersive) {
+                setAutoPlay(true);
+                setShowSettings(false);
+                } else {
+                setAutoPlay(false);
+                }
+            }, [isImmersive]);
+
+            const fakeLogin = () => {
+                if (inputPwd === 'KRONOS') { setAppState('MENU'); return; }
+                let target = "KRONOS";
+                let pwd = "";
+                let i = 0;
+                setInputPwd("");
+                const interval = setInterval(() => {
+                pwd += target[i];
+                setInputPwd(pwd);
+                i++;
+                if (i === target.length) { clearInterval(interval); setTimeout(() => setAppState('MENU'), 600); }
+                }, 150);
+            };
+
+            const handleNext = () => {
+                setTransitioning(true);
+                setTimeout(() => {
+                setCurrentIndex((prev) => (prev + 1) % data.length);
+                setTransitioning(false);
+                }, 300);
+            };
+
+            const handlePrev = () => {
+                setTransitioning(true);
+                setTimeout(() => {
+                setCurrentIndex((prev) => (prev - 1 + data.length) % data.length);
+                setTransitioning(false);
+                }, 300);
+            };
+
+            const updateField = (field, value) => {
+                const { sourceIndex } = resolveEntityForEditing(field);
+                const newData = [...data];
+                newData[sourceIndex] = { ...newData[sourceIndex], [field]: value };
+                setData(newData);
+            };
+
+            const cycleVisual = (side, direction) => {
+                // We must update the visual at the source index
+                const fieldName = side === 'left' ? 'leftVisual' : 'rightVisual';
+                const { sourceIndex, data: entityData } = resolveEntityForEditing(fieldName);
                 
-                <div className="text-sm md:text-base font-bold tracking-wider opacity-90 text-white uppercase max-w-2xl leading-tight w-full flex justify-center">
-                   {isEditMode ? (
-                     <div className="flex flex-col w-full px-8 gap-2">
-                       <input 
-                          value={displayData.leftPowers}
-                          onChange={(e) => updateField('leftPowers', e.target.value)}
-                          placeholder="LINE 1 (e.g. POWERS)"
-                          className="bg-black/20 text-center border-b border-white/50 text-white p-1 focus:outline-none text-lg"
-                       />
-                       <input 
-                          value={displayData.leftDesc}
-                          onChange={(e) => updateField('leftDesc', e.target.value)}
-                          placeholder="LINE 2 (e.g. DESC)"
-                          className="bg-black/20 text-center border-b border-white/50 text-white p-1 focus:outline-none text-lg"
-                       />
-                     </div>
-                   ) : (
-                     <div className="flex flex-col gap-2">
-                        <span style={{ color: C.textDark, fontSize: '1.1em' }}>{displayData.leftPowers}</span>
-                        <span style={{ color: C.textDark, fontSize: '1.1em' }}>{displayData.leftDesc}</span>
-                     </div>
-                   )}
+                const currentVal = entityData[fieldName];
+                const newData = [...data];
+                
+                if (side === 'left') {
+                const currentTypeIdx = VISUAL_TYPES_LEFT.indexOf(currentVal);
+                let nextIdx = direction === 'next' ? currentTypeIdx + 1 : currentTypeIdx - 1;
+                if (nextIdx >= VISUAL_TYPES_LEFT.length) nextIdx = 0;
+                if (nextIdx < 0) nextIdx = VISUAL_TYPES_LEFT.length - 1;
+                newData[sourceIndex] = { ...newData[sourceIndex], leftVisual: VISUAL_TYPES_LEFT[nextIdx] };
+                } else {
+                let nextV = direction === 'next' ? currentVal + 1 : currentVal - 1;
+                if (nextV > 10) nextV = 1;
+                if (nextV < 1) nextV = 10;
+                newData[sourceIndex] = { ...newData[sourceIndex], rightVisual: nextV };
+                }
+                setData(newData);
+            };
+
+            const triggerUpload = (type) => {
+                if (isImmersive || isEditMode) return; 
+                setUploadTarget({ type, index: currentIndex }); // We'll resolve the source index in handleFileChange or use effective index
+                if (fileInputRef.current) fileInputRef.current.click();
+            };
+
+            const handleFileChange = (e) => {
+                const file = e.target.files?.[0];
+                if (file && uploadTarget) {
+                const url = URL.createObjectURL(file);
+                // Resolve where to save this image
+                const { sourceIndex } = resolveEntity(uploadTarget.index, uploadTarget.type);
+                const key = `${uploadTarget.type}-${sourceIndex}`;
+                setCustomImages(prev => ({ ...prev, [key]: url }));
+                }
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            };
+
+            // --- Recursive Inheritance Logic ---
+            // Returns the data object and the index it came from
+            const resolveEntity = (index, side) => {
+                // Base case: index 0 is always the source for itself
+                if (index === 0) return { data: data[0], sourceIndex: 0 };
+                
+                const prev = data[index - 1];
+                const prevOutcome = prev.outcome;
+
+                // Check inheritance rules
+                // If side is LEFT (Hero) -> Inherits if prev outcome was DROID_ELIMINATED or ONGOING
+                // If side is RIGHT (Droid) -> Inherits if prev outcome was HERO_ELIMINATED or ONGOING
+                
+                const inherits = (side === 'left' && (prevOutcome === 'DROID_ELIMINATED' || prevOutcome === 'ONGOING')) ||
+                                (side === 'right' && (prevOutcome === 'HERO_ELIMINATED' || prevOutcome === 'ONGOING'));
+
+                if (inherits) {
+                return resolveEntity(index - 1, side);
+                } else {
+                // New challenger appearing at this index
+                return { data: data[index], sourceIndex: index };
+                }
+            };
+
+            // Helper to determine which entity is being edited currently
+            const resolveEntityForEditing = (fieldName) => {
+                const side = fieldName.startsWith('left') ? 'left' : (fieldName.startsWith('right') ? 'right' : 'outcome'); // Outcome updates current
+                if (side === 'outcome') return { data: data[currentIndex], sourceIndex: currentIndex };
+                return resolveEntity(currentIndex, side);
+            };
+
+            // Resolve data for rendering
+            const leftEntity = resolveEntity(currentIndex, 'left');
+            const rightEntity = resolveEntity(currentIndex, 'right');
+            
+            // Flatten for easy access
+            const displayData = {
+                ...data[currentIndex], // Current slide's outcome/id
+                // Overwrite left props with resolved
+                leftName: leftEntity.data.leftName,
+                leftRating: leftEntity.data.leftRating,
+                leftPowers: leftEntity.data.leftPowers,
+                leftDesc: leftEntity.data.leftDesc,
+                leftVisual: leftEntity.data.leftVisual,
+                // Overwrite right props with resolved
+                rightName: rightEntity.data.rightName,
+                rightRating: rightEntity.data.rightRating,
+                rightDesc: rightEntity.data.rightDesc,
+                rightVisual: rightEntity.data.rightVisual,
+            };
+
+            // Image resolution needs to check the customImages map using source indices
+            const getEffectiveImage = (side) => {
+                const { sourceIndex } = resolveEntity(currentIndex, side);
+                const key = `${side}-${sourceIndex}`;
+                return customImages[key] || null;
+            };
+
+            const currentLeftImg = getEffectiveImage('left');
+            const currentRightImg = getEffectiveImage('right');
+            
+            const leftTerminated = displayData.outcome === 'HERO_ELIMINATED';
+            const rightTerminated = displayData.outcome === 'DROID_ELIMINATED';
+
+            // --- Views ---
+
+            const renderBoot = () => (
+                <div className="flex items-center justify-center h-full bg-black text-white font-mono text-xl">
+                <div className="animate-pulse tracking-widest">INITIALIZING SYSTEM...</div>
                 </div>
-            </div>
-          </div>
+            );
 
-          {/* RIGHT PANEL */}
-          <div 
-            className={`w-1/2 relative flex flex-col group ${!isImmersive && !isEditMode ? 'cursor-pointer' : ''}`} 
-            style={{ backgroundColor: C.bgLight }}
-            onClick={() => triggerUpload('right')}
-          >
-             <div className="flex-1 flex items-center justify-center relative overflow-hidden">
-                 
-                 {/* Visual Type Cycler (Edit Mode Only) */}
-                 {isEditMode && (
-                  <div className="absolute top-4 w-full flex justify-between px-8 z-50">
-                     <button onClick={(e) => { e.stopPropagation(); cycleVisual('right', 'prev'); }} className="bg-black/10 hover:bg-black/20 p-2 rounded-full text-black"><ChevronLeft/></button>
-                     <span className="text-black font-mono text-xs bg-white/50 px-2 py-1 rounded">MODEL TYPE</span>
-                     <button onClick={(e) => { e.stopPropagation(); cycleVisual('right', 'next'); }} className="bg-black/10 hover:bg-black/20 p-2 rounded-full text-black"><ChevronRight/></button>
-                  </div>
-                )}
+            const renderLogin = () => (
+                <div 
+                className="flex flex-col items-center justify-center h-full w-full relative cursor-pointer" 
+                style={{ backgroundColor: C.bgTeal }}
+                onClick={fakeLogin}
+                >
+                <div className="w-full h-32 flex items-center justify-center" style={{ backgroundColor: C.bgLight }}>
+                    <div className="font-black text-6xl tracking-[0.5em] font-mono relative" style={{ color: C.textDark }}>
+                        {inputPwd || "PASSWORD"}
+                        {inputPwd && cursorVisible && <span className="absolute -right-12 bottom-2 w-8 h-2 bg-black"></span>}
+                        {!inputPwd && cursorVisible && <span className="absolute -right-12 bottom-2 w-8 h-2 bg-black animate-pulse"></span>}
+                    </div>
+                </div>
+                </div>
+            );
 
-                 {!isImmersive && !isEditMode && (
-                   <div className="absolute inset-0 z-40 bg-teal-900/10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      <Upload className="text-teal-900 w-12 h-12 mb-2" />
-                      <span className="text-teal-900 font-mono text-sm tracking-widest">UPLOAD IMAGE</span>
-                   </div>
-                 )}
-
-                 <div className={`w-3/4 h-3/4 flex items-center justify-center ${showTerminated && rightTerminated ? 'grayscale contrast-125' : ''}`}>
-                    {currentRightImg ? (
-                        <img src={currentRightImg} alt="Right Entity" className="w-full h-full object-contain mix-blend-multiply" />
-                    ) : (
-                        <DroidSilhouette version={displayData.rightVisual} className="w-full h-full drop-shadow-xl" style={{ color: 'black' }} />
-                    )}
-                 </div>
-
-                 {/* RIGHT TERMINATED STAMP */}
-                 {showTerminated && !isEditMode && rightTerminated && (
-                  <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 z-50 animate-stamp-bar origin-center overflow-hidden pointer-events-none">
-                     <div className="bg-[#D61A1A] w-full py-5 flex justify-center items-center shadow-lg border-y-4 border-[#900]">
-                        <span className="text-white font-black text-7xl md:text-8xl lg:text-9xl tracking-widest uppercase drop-shadow-md whitespace-nowrap">
-                           TERMINATED
+            const renderMenu = () => {
+                const menuItems = ["ISLAND OPERATIONS", "FINANCES", "OMNIDROID METATRAINING", "SUPERS"];
+                return (
+                <div className="flex flex-col h-full font-mono p-12 justify-center relative" style={{ backgroundColor: C.bgTeal }}>
+                    <div className="max-w-4xl mx-auto w-full flex flex-col gap-1">
+                    {menuItems.map((item, idx) => (
+                        <div 
+                        key={idx}
+                        className={`flex items-center p-6 cursor-pointer transition-all duration-100 ${idx === 3 ? 'pl-12' : 'hover:pl-10 opacity-60 hover:opacity-100'}`}
+                        style={{ backgroundColor: idx === 3 ? C.bgLight : 'transparent' }}
+                        onClick={() => idx === 3 && setAppState('DATABASE')}
+                        >
+                        <div className="w-12 flex justify-center mr-6">
+                            {idx === 0 && <Activity size={32} color={C.textDark} />}
+                            {idx === 1 && <span className="text-4xl font-bold" style={{ color: C.textDark }}>$</span>}
+                            {idx === 2 && <Zap size={32} color={C.textDark} />}
+                            {idx === 3 && <UserIcon className="w-8 h-8" color={C.textDark} />}
+                        </div>
+                        <span className="text-4xl font-black tracking-widest" style={{ color: C.textDark }}>
+                            {item}
                         </span>
-                     </div>
-                  </div>
-                )}
-             </div>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+                );
+            };
 
-             <div className="h-[22vh] flex flex-col items-center justify-center text-center p-4 z-20 shrink-0" style={{ backgroundColor: C.bgTeal, borderTop: `4px solid ${C.bgLight}` }}>
-                {isEditMode ? (
-                  <div className="w-full flex flex-col items-center gap-2">
-                     <div className="w-full">
+            const renderDatabase = () => {
+                return (
+                <div className="flex flex-col w-full h-full font-sans relative overflow-hidden group/main">
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+
+                    {/* Header Bar */}
+                    <div className="h-[14vh] flex items-center justify-between px-8 z-10 transition-all duration-500 shrink-0" 
+                        style={{ backgroundColor: C.bgTeal, borderBottom: `4px solid ${C.bgLight}`, transform: isImmersive ? 'translateY(-100%)' : 'translateY(0)' }}>
+                    
+                    {/* Left Side: Header */}
+                    <div className="w-5/12 flex flex-col items-start justify-center overflow-hidden">
+                        {isEditMode ? (
                         <input 
-                           value={displayData.rightName}
-                           onChange={(e) => updateField('rightName', e.target.value)}
-                           placeholder="NAME"
-                           className="text-4xl lg:text-5xl font-black tracking-widest uppercase text-white bg-black/20 text-center w-full border-b border-white focus:outline-none"
+                            value={headers.left}
+                            onChange={(e) => setHeaders({...headers, left: e.target.value})}
+                            className="text-4xl lg:text-5xl font-black tracking-widest uppercase w-full bg-black/10 border-b border-white/50 text-black/80 focus:outline-none placeholder-black/30"
+                            placeholder="LEFT TITLE"
                         />
-                     </div>
-                     <textarea 
-                        value={displayData.rightDesc}
-                        onChange={(e) => updateField('rightDesc', e.target.value)}
-                        placeholder="FEATURES / DESC"
-                        className="bg-black/20 text-center border-b border-white/50 text-white p-1 focus:outline-none w-full text-lg h-20 resize-none"
-                     />
-                  </div>
-                ) : (
-                   <>
-                     <h2 className="text-4xl lg:text-5xl font-black tracking-widest uppercase mb-3 text-white drop-shadow-sm">{displayData.rightName}</h2>
-                     <div className="text-sm md:text-base font-bold tracking-wider opacity-90 text-white uppercase max-w-2xl leading-tight whitespace-pre-wrap">
-                        {displayData.rightDesc}
-                     </div>
-                   </>
-                )}
-            </div>
-          </div>
-        </div>
+                        ) : (
+                        <div className="text-4xl lg:text-5xl font-black tracking-widest uppercase truncate w-full" style={{ color: C.textDark }}>
+                            {headers.left}
+                        </div>
+                        )}
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                        <span className="text-base font-bold tracking-wider opacity-70" style={{ color: 'white' }}>THREAT:</span>
+                        {isEditMode ? (
+                            <input 
+                                type="number" step="0.1"
+                                value={displayData.leftRating === '' || isNaN(displayData.leftRating) ? '' : displayData.leftRating}
+                                onChange={(e) => updateField('leftRating', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                className="text-3xl lg:text-4xl font-black text-white bg-black/20 w-24 text-center border-b border-white focus:outline-none"
+                            />
+                        ) : (
+                            <span className="text-4xl lg:text-5xl font-black text-white">{displayData.leftRating ? displayData.leftRating.toFixed(1) : '?.?'}</span>
+                        )}
+                        </div>
+                    </div>
 
-        {/* Hidden UI Elements in Immersive Mode */}
-        {!isImmersive && (
-          <>
-            <div className="absolute bottom-4 right-4 flex gap-2 z-50 opacity-30 hover:opacity-100 transition-opacity">
-                <button onClick={handlePrev} className="bg-black/20 p-2 rounded text-white hover:bg-black/50"><ChevronLeft /></button>
-                <button onClick={handleNext} className="bg-black/20 p-2 rounded text-white hover:bg-black/50"><ChevronRight /></button>
-            </div>
-            
-            <button 
-              onClick={() => setAppState('MENU')} 
-              className="absolute top-6 left-2 z-50 opacity-20 hover:opacity-80 transition-opacity"
-              style={{ color: C.textDark }}
-              title="Return to Menu"
-            >
-              <Power size={24} />
-            </button>
-            
-            {/* Settings Fab */}
-            <div className="absolute bottom-4 left-4 z-50 flex flex-col-reverse gap-2 items-start">
-               <button 
-                 onClick={() => setShowSettings(!showSettings)} 
-                 className={`p-3 rounded-full shadow-lg transition-all ${showSettings ? 'bg-teal-700 text-white rotate-90' : 'bg-black/40 text-teal-900 hover:bg-teal-700 hover:text-white'}`}
-               >
-                 <Settings size={24} />
-               </button>
-
-               {/* Settings Menu */}
-               {showSettings && (
-                 <div className="flex flex-col gap-2 mb-2 bg-black/80 p-2 rounded-lg backdrop-blur-sm border border-teal-500/30 animate-in slide-in-from-bottom-2">
-                    <button 
-                      onClick={() => { setIsEditMode(!isEditMode); setShowSettings(false); }}
-                      className={`flex items-center gap-3 px-3 py-2 rounded w-full whitespace-nowrap ${isEditMode ? 'bg-teal-600 text-white' : 'text-teal-400 hover:bg-teal-900/50'}`}
-                    >
-                      <Edit3 size={18} />
-                      <span className="font-mono text-sm font-bold">EDIT MODE</span>
-                    </button>
+                    {/* Center: Outcome Toggle */}
+                    <div className="w-2/12 text-center flex items-center justify-center relative">
+                        {isEditMode && (
+                        <div className="flex flex-col items-center bg-black/40 p-2 rounded backdrop-blur-md border border-white/20 absolute top-2 z-50 shadow-xl">
+                            <span className="text-xs text-white font-mono mb-1 tracking-widest">OUTCOME</span>
+                            <div className="flex gap-2">
+                                <button 
+                                onClick={() => updateField('outcome', 'HERO_ELIMINATED')}
+                                className={`px-3 py-1 rounded text-xs font-bold ${displayData.outcome === 'HERO_ELIMINATED' ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+                                title="Left Terminated"
+                                >
+                                L-DEAD
+                                </button>
+                                <button 
+                                onClick={() => updateField('outcome', 'ONGOING')}
+                                className={`px-3 py-1 rounded text-xs font-bold ${displayData.outcome === 'ONGOING' ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+                                title="Draw"
+                                >
+                                DRAW
+                                </button>
+                                <button 
+                                onClick={() => updateField('outcome', 'DROID_ELIMINATED')}
+                                className={`px-3 py-1 rounded text-xs font-bold ${displayData.outcome === 'DROID_ELIMINATED' ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+                                title="Right Terminated"
+                                >
+                                R-DEAD
+                                </button>
+                            </div>
+                        </div>
+                        )}
+                    </div>
                     
-                    <button 
-                      onClick={() => { setIsImmersive(true); setShowSettings(false); }}
-                      className="flex items-center gap-3 px-3 py-2 rounded w-full whitespace-nowrap text-teal-400 hover:bg-teal-900/50"
-                    >
-                      <Monitor size={18} />
-                      <span className="font-mono text-sm font-bold">IMMERSIVE</span>
-                    </button>
+                    {/* Right Side: Header */}
+                    <div className="w-5/12 flex flex-col items-end justify-center overflow-hidden text-right">
+                        {isEditMode ? (
+                        <input 
+                            value={headers.right}
+                            onChange={(e) => setHeaders({...headers, right: e.target.value})}
+                            className="text-4xl lg:text-5xl font-black tracking-widest uppercase w-full bg-black/10 border-b border-white/50 text-black/80 focus:outline-none text-right placeholder-black/30"
+                            placeholder="RIGHT TITLE"
+                        />
+                        ) : (
+                        <div className="text-4xl lg:text-5xl font-black tracking-widest uppercase truncate w-full" style={{ color: C.textDark }}>
+                            {headers.right}
+                        </div>
+                        )}
+                        
+                        <div className="flex items-center justify-end gap-2 mt-1">
+                        <span className="text-base font-bold tracking-wider opacity-70" style={{ color: 'white' }}>THREAT:</span>
+                        {isEditMode ? (
+                            <input 
+                                type="number" step="0.1"
+                                value={displayData.rightRating === '' || isNaN(displayData.rightRating) ? '' : displayData.rightRating}
+                                onChange={(e) => updateField('rightRating', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                className="text-3xl lg:text-4xl font-black text-white bg-black/20 w-24 text-center border-b border-white focus:outline-none"
+                            />
+                        ) : (
+                            <span className="text-4xl lg:text-5xl font-black text-white">{displayData.rightRating ? displayData.rightRating.toFixed(1) : '?.?'}</span>
+                        )}
+                        </div>
+                    </div>
+                    </div>
 
-                    <div className="h-px bg-teal-500/30 my-1"></div>
+                    {/* Immersive Close Button */}
+                    {isImmersive && (
+                    <div className="absolute top-4 right-4 z-50 mix-blend-difference opacity-0 group-hover/main:opacity-100 transition-opacity">
+                        <button onClick={() => setIsImmersive(false)} className="text-white bg-white/20 p-2 rounded-full hover:bg-white/40">
+                            <X size={20} />
+                        </button>
+                    </div>
+                    )}
+
+                    {/* Content Area */}
+                    <div className={`flex-1 flex relative transition-opacity duration-200 ${transitioning ? 'opacity-80' : 'opacity-100'} ${isImmersive ? 'h-full' : ''}`}>
                     
-                    <button 
-                      onClick={() => setAutoPlay(!autoPlay)}
-                      className={`flex items-center gap-3 px-3 py-2 rounded w-full whitespace-nowrap ${autoPlay ? 'text-green-400' : 'text-teal-600 hover:text-teal-400'}`}
+                    {/* LEFT PANEL */}
+                    <div 
+                        className={`w-1/2 relative overflow-hidden flex flex-col group ${!isImmersive && !isEditMode ? 'cursor-pointer' : ''}`}
+                        onClick={() => triggerUpload('left')}
+                        style={{ backgroundColor: C.bgLight }}
                     >
-                      {autoPlay ? <Pause size={18} /> : <Play size={18} />}
-                      <span className="font-mono text-sm font-bold">AUTO PLAY</span>
-                    </button>
-                 </div>
-               )}
-            </div>
-          </>
-        )}
+                        <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+                            {/* Visual Type Cycler (Edit Mode Only) */}
+                            {isEditMode && (
+                            <div className="absolute top-4 w-full flex justify-between px-8 z-50">
+                                <button onClick={(e) => { e.stopPropagation(); cycleVisual('left', 'prev'); }} className="bg-black/10 hover:bg-black/20 p-2 rounded-full text-black"><ChevronLeft/></button>
+                                <span className="text-black font-mono text-xs bg-white/50 px-2 py-1 rounded">MODEL TYPE</span>
+                                <button onClick={(e) => { e.stopPropagation(); cycleVisual('left', 'next'); }} className="bg-black/10 hover:bg-black/20 p-2 rounded-full text-black"><ChevronRight/></button>
+                            </div>
+                            )}
 
-      </div>
-    );
-  };
+                            {/* Upload Hint */}
+                            {!isImmersive && !isEditMode && (
+                            <div className="absolute inset-0 z-40 bg-teal-900/10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <Upload className="text-teal-900 w-12 h-12 mb-2" />
+                                <span className="text-teal-900 font-mono text-sm tracking-widest">UPLOAD IMAGE</span>
+                            </div>
+                            )}
 
-  return (
-    <div className="w-screen h-screen overflow-hidden font-sans select-none relative bg-black flex flex-col">
-      <style>{`
-        @keyframes stampBar {
-          0% { transform: scaleY(0) scaleX(1.2); opacity: 0; }
-          50% { transform: scaleY(1.2) scaleX(1); opacity: 1; }
-          100% { transform: scaleY(1) scaleX(1); opacity: 1; }
+                            <div className={`w-4/5 h-4/5 flex items-center justify-center transition-all duration-1000 ease-in-out ${showTerminated && leftTerminated ? 'grayscale contrast-125' : ''}`} style={{ transform: isImmersive ? 'scale(1.05)' : 'scale(1)' }}>
+                            {currentLeftImg ? (
+                                <img src={currentLeftImg} alt="Hero" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full text-black/80">
+                                    <HeroSilhouette type={displayData.leftVisual} className="w-full h-full drop-shadow-2xl" />
+                                </div>
+                            )}
+                            </div>
+
+                            {/* LEFT TERMINATED STAMP */}
+                            {showTerminated && !isEditMode && leftTerminated && (
+                            <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 z-50 animate-stamp-bar origin-center overflow-hidden pointer-events-none">
+                                <div className="bg-[#D61A1A] w-full py-5 flex justify-center items-center shadow-lg border-y-4 border-[#900]">
+                                    <span className="text-white font-black text-7xl md:text-8xl lg:text-9xl tracking-widest uppercase drop-shadow-md whitespace-nowrap">
+                                    TERMINATED
+                                    </span>
+                                </div>
+                            </div>
+                            )}
+                        </div>
+
+                        {/* Left Info Footer */}
+                        <div className="h-[22vh] flex flex-col items-center justify-center text-center p-4 z-20 transition-all duration-300 shrink-0" style={{ backgroundColor: C.bgTeal, borderTop: `4px solid ${C.bgLight}` }}>
+                            {isEditMode ? (
+                            <div className="w-full flex flex-col items-center gap-2">
+                                <input 
+                                value={displayData.leftName}
+                                onChange={(e) => updateField('leftName', e.target.value)}
+                                className="text-4xl lg:text-5xl font-black tracking-widest uppercase text-white bg-black/20 text-center w-full border-b border-white focus:outline-none"
+                                />
+                            </div>
+                            ) : (
+                            <h2 className="text-4xl lg:text-5xl font-black tracking-widest uppercase mb-3 text-white drop-shadow-sm">{displayData.leftName}</h2>
+                            )}
+                            
+                            <div className="text-sm md:text-base font-bold tracking-wider opacity-90 text-white uppercase max-w-2xl leading-tight w-full flex justify-center">
+                            {isEditMode ? (
+                                <div className="flex flex-col w-full px-8 gap-2">
+                                <input 
+                                    value={displayData.leftPowers}
+                                    onChange={(e) => updateField('leftPowers', e.target.value)}
+                                    placeholder="LINE 1 (e.g. POWERS)"
+                                    className="bg-black/20 text-center border-b border-white/50 text-white p-1 focus:outline-none text-lg"
+                                />
+                                <input 
+                                    value={displayData.leftDesc}
+                                    onChange={(e) => updateField('leftDesc', e.target.value)}
+                                    placeholder="LINE 2 (e.g. DESC)"
+                                    className="bg-black/20 text-center border-b border-white/50 text-white p-1 focus:outline-none text-lg"
+                                />
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                    <span style={{ color: C.textDark, fontSize: '1.1em' }}>{displayData.leftPowers}</span>
+                                    <span style={{ color: C.textDark, fontSize: '1.1em' }}>{displayData.leftDesc}</span>
+                                </div>
+                            )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT PANEL */}
+                    <div 
+                        className={`w-1/2 relative flex flex-col group ${!isImmersive && !isEditMode ? 'cursor-pointer' : ''}`} 
+                        style={{ backgroundColor: C.bgLight }}
+                        onClick={() => triggerUpload('right')}
+                    >
+                        <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+                            
+                            {/* Visual Type Cycler (Edit Mode Only) */}
+                            {isEditMode && (
+                            <div className="absolute top-4 w-full flex justify-between px-8 z-50">
+                                <button onClick={(e) => { e.stopPropagation(); cycleVisual('right', 'prev'); }} className="bg-black/10 hover:bg-black/20 p-2 rounded-full text-black"><ChevronLeft/></button>
+                                <span className="text-black font-mono text-xs bg-white/50 px-2 py-1 rounded">MODEL TYPE</span>
+                                <button onClick={(e) => { e.stopPropagation(); cycleVisual('right', 'next'); }} className="bg-black/10 hover:bg-black/20 p-2 rounded-full text-black"><ChevronRight/></button>
+                            </div>
+                            )}
+
+                            {!isImmersive && !isEditMode && (
+                            <div className="absolute inset-0 z-40 bg-teal-900/10 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <Upload className="text-teal-900 w-12 h-12 mb-2" />
+                                <span className="text-teal-900 font-mono text-sm tracking-widest">UPLOAD IMAGE</span>
+                            </div>
+                            )}
+
+                            <div className={`w-3/4 h-3/4 flex items-center justify-center ${showTerminated && rightTerminated ? 'grayscale contrast-125' : ''}`}>
+                                {currentRightImg ? (
+                                    <img src={currentRightImg} alt="Right Entity" className="w-full h-full object-contain mix-blend-multiply" />
+                                ) : (
+                                    <DroidSilhouette version={displayData.rightVisual} className="w-full h-full drop-shadow-xl" style={{ color: 'black' }} />
+                                )}
+                            </div>
+
+                            {/* RIGHT TERMINATED STAMP */}
+                            {showTerminated && !isEditMode && rightTerminated && (
+                            <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 z-50 animate-stamp-bar origin-center overflow-hidden pointer-events-none">
+                                <div className="bg-[#D61A1A] w-full py-5 flex justify-center items-center shadow-lg border-y-4 border-[#900]">
+                                    <span className="text-white font-black text-7xl md:text-8xl lg:text-9xl tracking-widest uppercase drop-shadow-md whitespace-nowrap">
+                                    TERMINATED
+                                    </span>
+                                </div>
+                            </div>
+                            )}
+                        </div>
+
+                        <div className="h-[22vh] flex flex-col items-center justify-center text-center p-4 z-20 shrink-0" style={{ backgroundColor: C.bgTeal, borderTop: `4px solid ${C.bgLight}` }}>
+                            {isEditMode ? (
+                            <div className="w-full flex flex-col items-center gap-2">
+                                <div className="w-full">
+                                    <input 
+                                    value={displayData.rightName}
+                                    onChange={(e) => updateField('rightName', e.target.value)}
+                                    placeholder="NAME"
+                                    className="text-4xl lg:text-5xl font-black tracking-widest uppercase text-white bg-black/20 text-center w-full border-b border-white focus:outline-none"
+                                    />
+                                </div>
+                                <textarea 
+                                    value={displayData.rightDesc}
+                                    onChange={(e) => updateField('rightDesc', e.target.value)}
+                                    placeholder="FEATURES / DESC"
+                                    className="bg-black/20 text-center border-b border-white/50 text-white p-1 focus:outline-none w-full text-lg h-20 resize-none"
+                                />
+                            </div>
+                            ) : (
+                            <>
+                                <h2 className="text-4xl lg:text-5xl font-black tracking-widest uppercase mb-3 text-white drop-shadow-sm">{displayData.rightName}</h2>
+                                <div className="text-sm md:text-base font-bold tracking-wider opacity-90 text-white uppercase max-w-2xl leading-tight whitespace-pre-wrap">
+                                    {displayData.rightDesc}
+                                </div>
+                            </>
+                            )}
+                        </div>
+                    </div>
+                    </div>
+
+                    {/* Hidden UI Elements in Immersive Mode */}
+                    {!isImmersive && (
+                    <>
+                        <div className="absolute bottom-4 right-4 flex gap-2 z-50 opacity-30 hover:opacity-100 transition-opacity">
+                            <button onClick={handlePrev} className="bg-black/20 p-2 rounded text-white hover:bg-black/50"><ChevronLeft /></button>
+                            <button onClick={handleNext} className="bg-black/20 p-2 rounded text-white hover:bg-black/50"><ChevronRight /></button>
+                        </div>
+                        
+                        <button 
+                        onClick={() => setAppState('MENU')} 
+                        className="absolute top-6 left-2 z-50 opacity-20 hover:opacity-80 transition-opacity"
+                        style={{ color: C.textDark }}
+                        title="Return to Menu"
+                        >
+                        <Power size={24} />
+                        </button>
+                        
+                        {/* Settings Fab */}
+                        <div className="absolute bottom-4 left-4 z-50 flex flex-col-reverse gap-2 items-start">
+                        <button 
+                            onClick={() => setShowSettings(!showSettings)} 
+                            className={`p-3 rounded-full shadow-lg transition-all ${showSettings ? 'bg-teal-700 text-white rotate-90' : 'bg-black/40 text-teal-900 hover:bg-teal-700 hover:text-white'}`}
+                        >
+                            <Settings size={24} />
+                        </button>
+
+                        {/* Settings Menu */}
+                        {showSettings && (
+                            <div className="flex flex-col gap-2 mb-2 bg-black/80 p-2 rounded-lg backdrop-blur-sm border border-teal-500/30 animate-in slide-in-from-bottom-2">
+                                <button 
+                                onClick={() => { setIsEditMode(!isEditMode); setShowSettings(false); }}
+                                className={`flex items-center gap-3 px-3 py-2 rounded w-full whitespace-nowrap ${isEditMode ? 'bg-teal-600 text-white' : 'text-teal-400 hover:bg-teal-900/50'}`}
+                                >
+                                <Edit3 size={18} />
+                                <span className="font-mono text-sm font-bold">EDIT MODE</span>
+                                </button>
+                                
+                                <button 
+                                onClick={() => { setIsImmersive(true); setShowSettings(false); }}
+                                className="flex items-center gap-3 px-3 py-2 rounded w-full whitespace-nowrap text-teal-400 hover:bg-teal-900/50"
+                                >
+                                <Monitor size={18} />
+                                <span className="font-mono text-sm font-bold">IMMERSIVE</span>
+                                </button>
+
+                                <div className="h-px bg-teal-500/30 my-1"></div>
+                                
+                                <button 
+                                onClick={() => setAutoPlay(!autoPlay)}
+                                className={`flex items-center gap-3 px-3 py-2 rounded w-full whitespace-nowrap ${autoPlay ? 'text-green-400' : 'text-teal-600 hover:text-teal-400'}`}
+                                >
+                                {autoPlay ? <Pause size={18} /> : <Play size={18} />}
+                                <span className="font-mono text-sm font-bold">AUTO PLAY</span>
+                                </button>
+                            </div>
+                        )}
+                        </div>
+                    </>
+                    )}
+
+                </div>
+                );
+            };
+
+            return (
+                <div className="w-screen h-screen overflow-hidden font-sans select-none relative bg-black flex flex-col">
+                <style>{`
+                    @keyframes stampBar {
+                    0% { transform: scaleY(0) scaleX(1.2); opacity: 0; }
+                    50% { transform: scaleY(1.2) scaleX(1); opacity: 1; }
+                    100% { transform: scaleY(1) scaleX(1); opacity: 1; }
+                    }
+                    .animate-stamp-bar {
+                    animation: stampBar 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+                    }
+                `}</style>
+                
+                {/* CRT Overlay Effect */}
+                <div className="pointer-events-none absolute inset-0 z-[100]">
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_3px,3px_100%]"></div>
+                    <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_60%,rgba(0,0,0,0.3)_100%)]"></div>
+                </div>
+
+                {appState === 'BOOT' && renderBoot()}
+                {appState === 'LOGIN' && renderLogin()}
+                {appState === 'MENU' && renderMenu()}
+                {appState === 'DATABASE' && renderDatabase()}
+                </div>
+            );
         }
-        .animate-stamp-bar {
-          animation: stampBar 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-      `}</style>
-      
-      {/* CRT Overlay Effect */}
-      <div className="pointer-events-none absolute inset-0 z-[100]">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_3px,3px_100%]"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle,transparent_60%,rgba(0,0,0,0.3)_100%)]"></div>
-      </div>
 
-      {appState === 'BOOT' && renderBoot()}
-      {appState === 'LOGIN' && renderLogin()}
-      {appState === 'MENU' && renderMenu()}
-      {appState === 'DATABASE' && renderDatabase()}
-    </div>
-  );
-}
-
-const UserIcon = ({ className, color }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter" className={className}>
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
-  </svg>
-);
-
-
+        const root = createRoot(document.getElementById('root'));
+        root.render(<KronosInterface />);
+    </script>
+</body>
+</html>
