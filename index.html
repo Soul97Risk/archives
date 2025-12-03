@@ -416,7 +416,7 @@
 
             const renderDatabase = () => {
                 return (
-                <div className="flex flex-col w-full h-full font-sans relative overflow-hidden group/main">
+                <div className="flex flex-col w-full h-full font-sans relative overflow-hidden group/main mx-auto" style={{ maxWidth: '177.78vh' }}>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
 
                     {/* Header Bar */}
@@ -566,7 +566,7 @@
                             {showTerminated && !isEditMode && leftTerminated && (
                             <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 z-50 animate-stamp-bar origin-center overflow-hidden pointer-events-none">
                                 <div className="bg-[#D61A1A] w-full py-5 flex justify-center items-center shadow-lg border-y-4 border-[#900]">
-                                    <span className="text-white font-black text-7xl md:text-8xl lg:text-9xl tracking-widest uppercase drop-shadow-md whitespace-nowrap">
+                                    <span className="text-white font-black text-5xl md:text-6xl lg:text-7xl tracking-widest uppercase drop-shadow-md whitespace-nowrap">
                                     TERMINATED
                                     </span>
                                 </div>
@@ -650,7 +650,7 @@
                             {showTerminated && !isEditMode && rightTerminated && (
                             <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 z-50 animate-stamp-bar origin-center overflow-hidden pointer-events-none">
                                 <div className="bg-[#D61A1A] w-full py-5 flex justify-center items-center shadow-lg border-y-4 border-[#900]">
-                                    <span className="text-white font-black text-7xl md:text-8xl lg:text-9xl tracking-widest uppercase drop-shadow-md whitespace-nowrap">
+                                    <span className="text-white font-black text-5xl md:text-6xl lg:text-7xl tracking-widest uppercase drop-shadow-md whitespace-nowrap">
                                     TERMINATED
                                     </span>
                                 </div>
